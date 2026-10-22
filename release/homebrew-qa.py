@@ -250,6 +250,9 @@ def main():
         shutil.copy2(HERE/'formula_renames.json', installed_tap/'formula_renames.json')
         git_commit(installed_tap, 'khuluma: renamed from tmux-whisper (QA)', env)
         require(not command(['git','-C',installed_tap,'status','--porcelain'], env).strip(), 'fixture tap transition is not fully committed')
+        # Trust only our verified canonical fixture formula. Homebrew trust
+        # intentionally does not follow the old formula name during a rename.
+        command(['brew','trust','--formula',TAP+'/khuluma'], env)
         command(['brew','migrate','--dry-run',TAP+'/tmux-whisper'], env)
         command(['brew','migrate',TAP+'/tmux-whisper'], env)
         require((cellar/'tmux-whisper').is_symlink() and (cellar/'tmux-whisper').resolve() == (cellar/'khuluma').resolve(), 'old rack was not migrated to canonical ownership')
@@ -300,7 +303,13 @@ def main():
     command([prefix/'bin/khuluma','config','defaults'], contract_env)
     doctor = json.loads(command([prefix/'bin/khuluma','doctor','--json'], contract_env))
     old_doctor = json.loads(command([prefix/'bin/tmux-whisper','doctor','--json'], contract_env))
-    require(doctor['schema_version'] == 2 and doctor['install_sanity']['daemon_source']['path'] == str(share/'native'), 'doctor schema/source discovery differs')
+    require(doctor['schema_version'] == 2, 'doctor schema differs')
+    reported_source = Path(doctor['install_sanity']['daemon_source']['path'])
+    expected_source = share/'native'
+    print(json.dumps({'doctor_source_reported':str(reported_source), 'doctor_source_expected':str(expected_source)}), flush=True)
+    require(reported_source.resolve(strict=True) == expected_source.resolve(strict=True)
+            and (reported_source/'Package.swift').samefile(expected_source/'Package.swift'),
+            'doctor source discovery does not identify this canonical keg package')
     require('cli_binary' in doctor['install_sanity'] and 'tmux_whisper_binary' in old_doctor['install_sanity']
             and 'schema_version' not in old_doctor, 'legacy doctor adapter differs')
     require(snapshot([profile, qa_root/'contract-data']) == pure_before, 'read-only probes changed contract profile/data')
