@@ -40,12 +40,19 @@ to identify the same canonical keg, rather than comparing lexical spellings.
 
 Inputs required at the actual release gate
 
-The v0.11.0 candidate uses verified immutable commit
+The published v0.11.0 formula uses verified immutable commit
 `31b86a65a4b2b9b2c32e1faf51af81f46bd93b1b` and measured archive SHA256
 `ddac91098b8e616bf9edfa526eae6ef8fe4fa347907634570589788642b2b9ee`.
 All 192 regular archive files matched that Git commit, and the real pinned
 bootstrap passed in a private child HOME with real user roots unchanged.
-Three-scenario hosted package QA remains required before publication.
+All three scenarios passed for candidate commit `21c65faa` in
+[run 39852559290](https://github.com/ricardo-nth/homebrew-tap/actions/runs/39852559290),
+then for published tap commit `449aa97160e7295e3d759cf35a91c0c3ae5a41c1` in
+[run 39853338244](https://github.com/ricardo-nth/homebrew-tap/actions/runs/39853338244).
+Both runs included strict audit, actual formula tests, one canonical owner and
+unchanged synthetic profiles. The targeted local v0.10→v0.11 upgrade also passed
+with old kegs retained and the daily app, daemon, data, model and trust unchanged.
+Uninstall was not run.
 
 The earlier completed v0.10.0 candidate used commit
 `f8af27e95c6763b30b52da107da3120c4d96f190` and actual archive SHA256
