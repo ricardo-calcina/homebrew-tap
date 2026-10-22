@@ -1,6 +1,6 @@
 # Khuluma Homebrew tap
 
-The neutral tap remains `ricardo-nth/tap`, hosted in `ricardo-nth/homebrew-tap`. Khuluma's canonical CLI formula is being prepared as `khuluma`; this checkout does not publish it yet. The existing active `Formula/tmux-whisper.rb` still installs the tagged v0.9.0 CLI with its original archive and checksum. It does not install Khuluma.app.
+The neutral tap remains `ricardo-nth/tap`, hosted in `ricardo-nth/homebrew-tap`. Khuluma's canonical CLI formula is being prepared as `khuluma`; this checkout does not publish it yet. The existing active `Formula/tmux-whisper.rb` still installs the unchanged tagged v0.9.0 CLI. Its archive URL and checksum were refreshed after the source repository rename; its installation recipe is unchanged. It does not install Khuluma.app.
 
 The local checkout layout is sibling folders `khuluma` and `homebrew-tap`, each with its own Git history. Earlier documentation's `tmux-whsper-brew-tap` spelling is the legacy checkout folder, not the Homebrew tap namespace.
 
@@ -13,7 +13,7 @@ brew tap ricardo-nth/tap
 brew install ricardo-nth/tap/tmux-whisper
 ```
 
-Its checked-in version is v0.9.0. This preparation pass did not check an online release or the installed version.
+Its checked-in version is v0.9.0. The published archive and unchanged tag were verified for the [transport-only bridge](https://github.com/ricardo-nth/homebrew-tap/pull/1); no local Homebrew installation was performed.
 
 ## Canonical release being prepared
 
@@ -30,9 +30,12 @@ The formula does not create or migrate configuration, download models, warm the 
 ## Release staging
 
 - `release/khuluma.rb.in` is the complete candidate formula. Its SHA256 token is deliberately unresolved and it is outside `Formula/`.
+- `release/khuluma.rb` completes that candidate with the actual v0.10.0 archive checksum for disposable QA; it remains outside `Formula/`.
 - `release/formula_renames.json` is the prepared `tmux-whisper` → `khuluma` map. It stays outside the repository root until the canonical formula is ready in the same change.
-- `release/HOMEBREW_QA.md` describes the inactive disposable public macOS workflow and its real old-to-new upgrade gates. Static preparation passed; no runner job has run.
-- `Formula/tmux-whisper.rb` remains unchanged while the candidate is pending. Its old description and paths describe the old release; they are not a template for the new package.
+- `release/HOMEBREW_QA.md` describes the manual disposable public macOS workflow and its real old-to-new upgrade gates. Static preparation passed; LOG.md records actual runner outcomes.
+- `Formula/tmux-whisper.rb` remains the active v0.9.0 recipe while the candidate is pending. The separate transport bridge changes only its archive URL and checksum. Its old description and paths describe the old release; they are not a template for the new package.
+
+Complete the first QA candidate at `release/khuluma.rb` and publish only the manual QA workflow and preparation files first. Dispatch it with `canonical_formula=release/khuluma.rb`, the actual final source tag commit and the measured renamed v0.9.0 archive checksum. Keep the active legacy formula and rename map unchanged until both disposable fresh/upgrade jobs pass; activate the canonical formula and root rename map together in a separate release PR.
 
 To activate the prepared release, finish and tag the source first. Fetch the actual `ricardo-nth/khuluma` v0.10.0 archive, inspect its safe root and payload, verify the release version, and compute its SHA256. Do not reuse the old checksum or guess a hash from the Git tree. Replace the candidate's SHA256 token with those verified bytes and place the completed file at `Formula/khuluma.rb` only when it is valid. Then place the rename map at the repository root, remove the superseded active legacy formula as part of that same reviewed release change, and validate the upgrade path before publishing.
 

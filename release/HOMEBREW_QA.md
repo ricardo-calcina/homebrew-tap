@@ -1,7 +1,8 @@
-This is an inactive release QA candidate. No Homebrew install, migration,
-upgrade, uninstall, remote change or workflow dispatch was performed during
-preparation. `release/homebrew-qa.yml` is deliberately outside `.github/`.
-The active legacy formula and the candidate template/rename map are unchanged.
+The completed release candidate is `release/khuluma.rb`. The manual workflow
+is `.github/workflows/homebrew-qa.yml`; `release/homebrew-qa.yml` retains the
+original staging copy. Local preparation ran no Homebrew install, migration,
+upgrade or uninstall. Actual runner outcomes are recorded separately in LOG.md.
+The legacy v0.9.0 recipe remains active. A separate [transport bridge](https://github.com/ricardo-nth/homebrew-tap/pull/1) refreshed only its same-tag archive URL/checksum after the source repository rename; the candidate template/rename map remain inactive.
 
 GitHub's standard hosted runners are free for public repositories; larger
 runners remain charged even for public repositories. The candidate allocates
@@ -12,13 +13,12 @@ macOS runners at 3 cores/7 GB, sufficient for this copy-only formula QA; runner
 image details can change. [GitHub runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners),
 [GitHub Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions).
 
-The connected GitHub repository metadata was checked read-only on 2026-10-22:
-`ricardo-nth/homebrew-tap` is public, its default branch is main, and its `.github`
-directory is absent. The local tap worktree also has no workflow to extend.
-This candidate is one manual-only workflow with two independent disposable
+Initial GitHub repository metadata was checked read-only on 2026-10-22:
+`ricardo-nth/homebrew-tap` is public, its default branch is main, and it had no
+existing `.github` workflow to extend. This is one manual-only workflow with two independent disposable
 runner jobs, `fresh` and `upgrade`, run sequentially. It uses checkout with
 `clean:false` and no persisted credentials, contents-read permission, and a
-35-minute job limit. Nothing here activates or pushes that workflow.
+35-minute job limit. It dispatches only when explicitly requested with final inputs.
 
 Homebrew requires the renamed file/class and the old-to-new
 `formula_renames.json` mapping in the same tap; do not leave two active formulae
@@ -30,6 +30,14 @@ deletion path. [Homebrew rename instructions](https://docs.brew.sh/Rename-A-Form
 [Homebrew migrator implementation](https://docs.brew.sh/rubydoc/Migrator.html#migrate-instance_method).
 
 Inputs required at the actual release gate
+
+The completed v0.10.0 candidate uses commit
+`f8af27e95c6763b30b52da107da3120c4d96f190` and actual archive SHA256
+`a0402bb36e3e0e86686cd0e4627afd5bbdb954e5e971e69cf06ac7caa6ea17b0`.
+The renamed v0.9.0 archive SHA256 is
+`61cc4d746734cb1c61146b1b086d1f381e701cd1a8b04f242ddfb2ecb81d85f2`.
+First dispatch with `canonical_formula=release/khuluma.rb`; after activation,
+repeat against `Formula/khuluma.rb` to check the published formula.
 
 - A completed canonical formula inside this checkout, using the **actual final
   canonical tag URL and measured archive SHA256**. The default workflow path is
@@ -43,7 +51,7 @@ Inputs required at the actual release gate
   repository's archive URL. Historical commit
   `d0152e45f84551b71a679cfc32da0b9821d8f4f9` is preserved and checked by QA.
 
-`fixtures/tmux-whisper-v0.9.0.rb` is the exact current published formula,
+`fixtures/tmux-whisper-v0.9.0.rb` is the exact formula published before the source repository rename,
 preserved with SHA256
 `3b609395f1b31ec8c029116aa8708e3f5f52d463311964aa2a7cf3406662ba60`.
 The upgrade fixture changes **only its URL and SHA256 lines** to the actual
