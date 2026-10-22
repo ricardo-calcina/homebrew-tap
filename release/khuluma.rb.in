@@ -8,8 +8,8 @@ class Khuluma < Formula
   license "MIT"
 
   depends_on "ffmpeg"
-  depends_on "python@3.15"
   depends_on macos: :sonoma
+  depends_on "python@3.15"
 
   def install
     # Keep each executable beside its matching libraries. The compatibility
@@ -18,7 +18,7 @@ class Khuluma < Formula
     runtime_environment = {
       KHULUMA_LIB_PATH:         libexec/"khuluma-lib.sh",
       KHULUMA_INTERNAL_LIB_DIR: libexec/"khuluma-lib",
-      PATH:                    "#{Formula["python@3.15"].opt_libexec}/bin:#{Formula["ffmpeg"].opt_bin}:$PATH",
+      PATH:                     "#{formula_opt_libexec("python@3.15")}/bin:#{formula_opt_bin("ffmpeg")}:$PATH",
     }
     (bin/"khuluma").write_env_script libexec/"khuluma", runtime_environment
     (bin/"tmux-whisper").write_env_script libexec/"tmux-whisper", runtime_environment
@@ -89,7 +89,7 @@ class Khuluma < Formula
     assert_path_exists pkgshare/"native/Package.resolved"
     assert_path_exists pkgshare/"native/Sources/khulumad/CLI.swift"
     assert_path_exists pkgshare/"native/Sources/KhulumaDaemonKit/ASREngine.swift"
-    refute_predicate testpath/"profile", :exist?
-    refute_predicate testpath/"data", :exist?
+    refute_path_exists testpath/"profile"
+    refute_path_exists testpath/"data"
   end
 end
