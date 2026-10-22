@@ -2,19 +2,21 @@
 
 ## Now
 
-Preparing canonical-only v0.11.0 in an isolated worktree. The formula is bound to the verified immutable source tag at `31b86a65`; actual archive SHA is in `Formula/khuluma.rb`. The archive's 192 files matched Git and pinned bootstrap passed privately. Hosted fresh/v0.9/v0.10 package QA and publication are next. The daily app/local CLI refresh passed separately; no daily Brew changes yet.
+Canonical-only v0.11.0 is published in #7 at `449aa971`. Its formula is bound to immutable source commit `31b86a65`; all 192 archive files matched Git and the actual checksum is in `Formula/khuluma.rb`. Pinned bootstrap, candidate QA [39852559290](https://github.com/ricardo-nth/homebrew-tap/actions/runs/39852559290) and published QA [39853338244](https://github.com/ricardo-nth/homebrew-tap/actions/runs/39853338244) passed. Each hosted run passed fresh install, v0.9 upgrade and v0.10 upgrade, including strict audit, actual formula tests, one owner and unchanged synthetic profiles.
 
-The published v0.10 fresh/v0.9 QA outcomes remain in Done and the QA record. Keep prior releases and the exact v0.9/v0.10 fixtures intact.
+This Mac's targeted v0.10→v0.11 Brew upgrade passed with automatic updates and cleanup disabled. The v0.9/v0.10 kegs remain; dependencies, trust, canonical config/model and running daily app/daemon were preserved. Local and Brew CLIs both select the same profile. The user accepted the separately refreshed v0.11 app.
 
-The source [LOG](https://github.com/ricardo-nth/khuluma/blob/main/LOG.md) owns current product work; its [archived identity record](https://github.com/ricardo-nth/khuluma/blob/main/docs/plans/archive/KHULUMA_IDENTITY_RENAME.md) preserves migration evidence. Keep the neutral tap and one canonical formula/map. Package installation does not migrate user data or install the app.
+The source [LOG](https://github.com/ricardo-nth/khuluma/blob/main/LOG.md) owns product work; its [archived identity record](https://github.com/ricardo-nth/khuluma/blob/main/docs/plans/archive/KHULUMA_IDENTITY_RENAME.md) preserves migration evidence. Keep the neutral tap, one canonical formula/map and exact historical fixtures. Package installation does not migrate user data or install the app. Earlier QA failures were followed by successful runs; no outstanding failure remains for this release.
 
 ## Next
 
-- [ ] P1 · Bind the verified v0.11 source/archive, pass all three disposable scenarios and publish matching canonical-only package · added 2026-10-23
+- [x] P1 · Bind the verified v0.11 source/archive, pass all three disposable scenarios and publish matching canonical-only package · added 2026-10-23
 
 - [x] P1 · Verify the final source archive, activate canonical formula/rename map, test fresh install and old-formula upgrade in isolation, then publish the tap · added 2026-10-22
 
 ## Done
+
+- 2026-10-23 · Published v0.11 and passed all three candidate/published QA scenarios plus the retained local upgrade · #7; Actions39853338244
 
 - 2026-10-23 · Prepared canonical-only formula and three-scenario QA against measured v0.11 source; prior fixtures retained · release/HOMEBREW_QA.md
 
