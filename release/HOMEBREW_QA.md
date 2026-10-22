@@ -1,8 +1,8 @@
-The completed release candidate is `release/khuluma.rb`. The manual workflow
-is `.github/workflows/homebrew-qa.yml`; `release/homebrew-qa.yml` retains the
-original staging copy. Local preparation ran no Homebrew install, migration,
-upgrade or uninstall. Actual runner outcomes are recorded separately in LOG.md.
-The legacy v0.9.0 recipe remains active. A separate [transport bridge](https://github.com/ricardo-nth/homebrew-tap/pull/1) refreshed only its same-tag archive URL/checksum after the source repository rename; the candidate template/rename map remain inactive.
+The release formula is `Formula/khuluma.rb`, with root `formula_renames.json`
+mapping the former package name to it. The sole manual workflow is
+`.github/workflows/homebrew-qa.yml`; obsolete staging copies were retired after
+candidate QA passed. Actual runner outcomes are recorded separately in LOG.md.
+The earlier [transport bridge](https://github.com/ricardo-nth/homebrew-tap/pull/1) refreshed only the old v0.9.0 same-tag archive URL/checksum after the source repository rename.
 
 GitHub's standard hosted runners are free for public repositories; larger
 runners remain charged even for public repositories. The candidate allocates
@@ -46,13 +46,14 @@ The completed v0.10.0 candidate uses commit
 `a0402bb36e3e0e86686cd0e4627afd5bbdb954e5e971e69cf06ac7caa6ea17b0`.
 The renamed v0.9.0 archive SHA256 is
 `61cc4d746734cb1c61146b1b086d1f381e701cd1a8b04f242ddfb2ecb81d85f2`.
-First dispatch with `canonical_formula=release/khuluma.rb`; after activation,
-repeat against `Formula/khuluma.rb` to check the published formula.
+Both candidate scenarios passed before the tracked formula/map moves in
+[run 39842673670](https://github.com/ricardo-nth/homebrew-tap/actions/runs/39842673670).
+Dispatch with `canonical_formula=Formula/khuluma.rb` to check the active formula,
+and repeat after publication to verify the published paths.
 
 - A completed canonical formula inside this checkout, using the **actual final
   canonical tag URL and measured archive SHA256**. The default workflow path is
-  `Formula/khuluma.rb`; a completed candidate under release/ can be supplied before
-  activation. The unresolved `.rb.in` is rejected. The workflow does not fill or
+  `Formula/khuluma.rb`. An unresolved checksum is rejected. The workflow does not fill or
   guess its checksum, create a tag, or activate the formula/map.
 - The exact commit of that final canonical source tag. QA resolves the public
   tag and checks this value, then fetches/verifies the archive bytes and required
