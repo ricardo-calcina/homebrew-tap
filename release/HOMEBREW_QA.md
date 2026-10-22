@@ -15,15 +15,14 @@ image details can change. [GitHub runner reference](https://docs.github.com/en/a
 
 Initial GitHub repository metadata was checked read-only on 2026-10-22:
 `ricardo-nth/homebrew-tap` is public, its default branch is main, and it had no
-existing `.github` workflow to extend. This is one manual-only workflow with two independent disposable
-runner jobs, `fresh` and `upgrade`, run in parallel on separate standard public macOS VMs. It uses checkout with
+existing `.github` workflow to extend. The workflow now has three independent disposable scenarios: `fresh`, `upgrade-v0.9` and `upgrade-v0.10`, with at most two standard public macOS VMs at once. It uses checkout with
 `clean:false` and no persisted credentials, contents-read permission, and a
 35-minute job limit. It dispatches only when explicitly requested with final inputs.
 
 Homebrew requires the renamed file/class and the old-to-new
 `formula_renames.json` mapping in the same tap; do not leave two active formulae
 for one package. Migration moves the installed old keg and updates its links;
-it does not install the newer source. Therefore the upgrade job runs actual
+it does not install the newer source. Therefore the v0.9 upgrade job runs actual
 `brew migrate` followed by actual `brew upgrade`, with assertions between them.
 It refuses a pre-existing canonical rack, avoiding the migrator's conflict
 deletion path. [Homebrew rename instructions](https://docs.brew.sh/Rename-A-Formula),
@@ -41,7 +40,14 @@ to identify the same canonical keg, rather than comparing lexical spellings.
 
 Inputs required at the actual release gate
 
-The completed v0.10.0 candidate uses commit
+The v0.11.0 candidate uses verified immutable commit
+`31b86a65a4b2b9b2c32e1faf51af81f46bd93b1b` and measured archive SHA256
+`ddac91098b8e616bf9edfa526eae6ef8fe4fa347907634570589788642b2b9ee`.
+All 192 regular archive files matched that Git commit, and the real pinned
+bootstrap passed in a private child HOME with real user roots unchanged.
+Three-scenario hosted package QA remains required before publication.
+
+The earlier completed v0.10.0 candidate used commit
 `f8af27e95c6763b30b52da107da3120c4d96f190` and actual archive SHA256
 `a0402bb36e3e0e86686cd0e4627afd5bbdb954e5e971e69cf06ac7caa6ea17b0`.
 The renamed v0.9.0 archive SHA256 is
@@ -66,6 +72,8 @@ For future releases, repeat against the exact published formula paths.
   repository's archive URL. Historical commit
   `d0152e45f84551b71a679cfc32da0b9821d8f4f9` is preserved and checked by QA.
 
+`fixtures/khuluma-v0.10.0.rb` retains the exact published v0.10 canonical formula for the direct upgrade scenario. Its source commit and archive checksum above remain immutable.
+
 `fixtures/tmux-whisper-v0.9.0.rb` is the exact formula published before the source repository rename,
 preserved with SHA256
 `3b609395f1b31ec8c029116aa8708e3f5f52d463311964aa2a7cf3406662ba60`.
@@ -76,36 +84,15 @@ does not edit old tag code, dependencies, install body, class, version or test,
 and it never changes the active legacy formula. It is not a checksum exception
 for the new formula: the new formula must always use its actual final tag.
 
-What the jobs check
+What the current jobs check
 
-1. Both jobs verify public tag commits, actual archive SHA256s, a single safe
-   source root, exact old/new CLI version declarations and required payload.
-   Only dependency bottles for ffmpeg and Python are installed. The formula's
-   install body is checked to exclude runtime/build hooks.
-2. Each job creates a private fixture tap under a private runner temporary root,
-   using the real `ricardo-nth/tap` identity with a local Git remote. No tap was
-   previously installed on that VM. The fresh job installs canonical source
-   into an empty synthetic home and proves help/version/defaults create no
-   profile/data tree.
-3. The upgrade job genuinely installs v0.9.0 from the preserved old formula,
-   runs its version probe, retains the exact old keg outside Cellar, installs
-   the new formula/map into that same tap and commits the local fixture change.
-   It then migrates, proves v0.9 remains under the canonical rack, upgrades,
-   and proves final opt/bin/shim/library links share the canonical current keg.
-   Old opt must point at that same keg; the old-name rack may remain an alias.
-4. Both jobs retain a synthetic old config/vocab/usage profile and prove the
-   package install/upgrade does not change its bytes, mode or mtime. Canonical
-   and legacy wrappers must return equal version JSON, canonical identity, and
-   migration_required=true. An attempted normal app-config probe must refuse
-   that un-migrated profile without creating an empty canonical profile.
-5. A separate retained contract profile checks app contract 3, canonical socket,
-   library API marker, native sources/tests/helpers/assets, doctor schema 2,
-   legacy doctor adapter and pkgshare native-source discovery. Pure probes must
-   leave this fixture unchanged. No daemon endpoint/model/build is needed.
-6. Strict audit and the actual formula test run with temporary retention.
-   Package inventory must belong only to the canonical rack, physical product
-   rack ownership must be singular, and real runner-home product roots remain
-   absent. This proves packaging ownership without deleting the payload.
+1. All scenarios verify public tag commits, actual archive SHA256s, a single safe source root, version declarations and required payload. Formula installation has no model, daemon, app or build hooks.
+2. Each job creates a private fixture tap under the runner temporary root. Fresh install proves help/version/defaults do not create profile/data trees.
+3. `upgrade-v0.9` installs the exact old formula (only renamed archive transport changes), retains its keg, then runs actual migration and upgrade. Its un-migrated legacy profile must remain unchanged and normal app-config must refuse it.
+4. `upgrade-v0.10` installs the exact published canonical formula and retains its keg. It seeds a canonical config/vocab/usage profile, proves old app-config works, then requires the next version to read that same profile without byte, mode or mtime changes. No identity migration is needed.
+5. Current command/opt/library links resolve to one canonical keg. The current keg must contain neither the old command nor its doctor adapter; old retained keg code is recovery material. The rename map remains package ownership metadata.
+6. A separate contract fixture checks app contract 3, canonical socket, library API, native sources/tests/helpers/assets, doctor schema 2 and pkgshare source discovery. No daemon/model is loaded.
+7. Strict audit and actual formula tests run with cleanup disabled and temporary retention. Package inventory has one canonical owner; real runner-home product roots remain absent. Uninstall is not run.
 
 Recovery and execution boundaries
 
@@ -136,4 +123,4 @@ check the YAML and Ruby syntax, verify the preserved fixture hash and confirm
 the template fails the input gate. `--check-only` validates a completed formula
 and supplied hash/commit syntax without Brew, network or profile mutations; it
 does not establish that a future archive exists or that Homebrew QA passed.
-Actual release acceptance requires both runner jobs with the real final inputs.
+Actual release acceptance requires all three scenarios with the real final inputs.
