@@ -1,0 +1,62 @@
+# INACTIVE CANDIDATE. Review and copy to .github/workflows/ only at the
+# authorized release gate. No workflow is activated by this staging file.
+name: Khuluma Homebrew release QA
+
+on:
+  workflow_dispatch:
+    inputs:
+      canonical_formula:
+        description: Completed final-tag formula path in this checkout
+        type: string
+        required: true
+        default: Formula/khuluma.rb
+      canonical_commit:
+        description: Exact immutable commit of the final canonical source tag
+        type: string
+        required: true
+      legacy_archive_sha256:
+        description: Measured renamed-repo v0.9.0 archive SHA256 (same old tag/code)
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: khuluma-homebrew-release-qa
+  cancel-in-progress: false
+
+jobs:
+  package:
+    # Applied before runner allocation. Standard public runners are free;
+    # this candidate never allocates private or larger paid runners.
+    if: github.event.repository.private == false && github.repository == 'ricardo-nth/homebrew-tap'
+    runs-on: macos-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        scenario: [fresh, upgrade]
+    env:
+      QA_PUBLIC_STANDARD_RUNNER: '1'
+      QA_CANDIDATE: ${{ inputs.canonical_formula }}
+      QA_CANONICAL_COMMIT: ${{ inputs.canonical_commit }}
+      QA_LEGACY_SHA256: ${{ inputs.legacy_archive_sha256 }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          clean: false
+          persist-credentials: false
+      - name: Validate retained fixture and completed final formula
+        run: |
+          python3 -B release/homebrew-qa.py --check-only --scenario '${{ matrix.scenario }}' \
+            --candidate "$QA_CANDIDATE" --canonical-commit "$QA_CANONICAL_COMMIT" \
+            --legacy-sha256 "$QA_LEGACY_SHA256"
+      - name: Test package ownership and genuine rename upgrade
+        run: |
+          python3 -B release/homebrew-qa.py --scenario '${{ matrix.scenario }}' \
+            --candidate "$QA_CANDIDATE" --canonical-commit "$QA_CANONICAL_COMMIT" \
+            --legacy-sha256 "$QA_LEGACY_SHA256"
+      # No cache, artifact upload, cleanup, uninstall, model, daemon, app or
+      # Keychain step. Synthetic data is retained for this runner's lifetime.
