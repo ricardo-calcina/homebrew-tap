@@ -29,6 +29,15 @@ It refuses a pre-existing canonical rack, avoiding the migrator's conflict
 deletion path. [Homebrew rename instructions](https://docs.brew.sh/Rename-A-Formula),
 [Homebrew migrator implementation](https://docs.brew.sh/rubydoc/Migrator.html#migrate-instance_method).
 
+Current Homebrew requires canonical formula trust when an old name migrates to
+a new formula; old-name trust does not transfer. The upgrade fixture explicitly
+runs `brew trust --formula ricardo-nth/tap/khuluma` only after installing the
+reviewed candidate into its private fixture tap. Its trust store belongs to the
+synthetic HOME; no daily Mac trust is changed. Doctor source routes may include
+`libexec/../share`; QA requires the resolved directory and existing Package.swift
+to identify the same canonical keg, rather than comparing lexical spellings.
+[Homebrew tap trust](https://docs.brew.sh/Tap-Trust).
+
 Inputs required at the actual release gate
 
 The completed v0.10.0 candidate uses commit
