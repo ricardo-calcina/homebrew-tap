@@ -48,8 +48,12 @@ The renamed v0.9.0 archive SHA256 is
 `61cc4d746734cb1c61146b1b086d1f381e701cd1a8b04f242ddfb2ecb81d85f2`.
 Both candidate scenarios passed before the tracked formula/map moves in
 [run 39842673670](https://github.com/ricardo-nth/homebrew-tap/actions/runs/39842673670).
-Dispatch with `canonical_formula=Formula/khuluma.rb` to check the active formula,
-and repeat after publication to verify the published paths.
+Both published-formula scenarios then passed at tap commit
+`d0724ae9255cf1b47cd8b135dd8ded71abf635d2` with
+`canonical_formula=Formula/khuluma.rb`: [run 39843684723](https://github.com/ricardo-nth/homebrew-tap/actions/runs/39843684723),
+Homebrew 7.0.9/arm64. Both runs included strict audit, actual formula tests,
+one canonical owner and unchanged synthetic profiles. Uninstall was not run.
+For future releases, repeat against the exact published formula paths.
 
 - A completed canonical formula inside this checkout, using the **actual final
   canonical tag URL and measured archive SHA256**. The default workflow path is
