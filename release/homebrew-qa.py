@@ -26,6 +26,9 @@ SOURCE_REPO = 'https://github.com/ricardo-nth/khuluma.git'
 LEGACY_COMMIT = 'd0152e45f84551b71a679cfc32da0b9821d8f4f9'
 LEGACY_URL = 'https://github.com/ricardo-nth/khuluma/archive/refs/tags/v0.9.0.tar.gz'
 FIXTURE_SHA = '3b609395f1b31ec8c029116aa8708e3f5f52d463311964aa2a7cf3406662ba60'
+PREVIOUS_COMMIT = 'f8af27e95c6763b30b52da107da3120c4d96f190'
+PREVIOUS_FIXTURE_SHA = 'a807b05a814d67e666f3a65e870dcf7b344ea619f5c2cbbc7b7569ed9aea57e5'
+PREVIOUS_ARCHIVE_SHA = 'a0402bb36e3e0e86686cd0e4627afd5bbdb954e5e971e69cf06ac7caa6ea17b0'
 HERE = Path(__file__).resolve().parent
 
 
@@ -99,11 +102,22 @@ def validate_inputs(args):
     candidate = Path(args.candidate).resolve()
     require(candidate.is_file() and candidate.is_relative_to(HERE.parent), 'candidate must be inside this tap checkout')
     legacy = HERE / 'fixtures/tmux-whisper-v0.9.0.rb'
+    previous = HERE / 'fixtures/khuluma-v0.10.0.rb'
     require(sha(legacy) == FIXTURE_SHA, 'preserved v0.9.0 formula fixture changed')
+    require(sha(previous) == PREVIOUS_FIXTURE_SHA, 'preserved v0.10.0 formula fixture changed')
     require(re.fullmatch('[0-9a-f]{64}', args.legacy_sha256), 'actual renamed v0.9 archive checksum is required')
     require(re.fullmatch('[0-9a-f]{40}', args.canonical_commit), 'actual final tag commit is required')
     require(json.loads((HERE.parent / 'formula_renames.json').read_text()) == {'tmux-whisper': 'khuluma'}, 'unexpected rename map')
-    return candidate, legacy, formula_fields(candidate)
+    final = formula_fields(candidate)
+    require(tuple(map(int, final['version'].split('.'))) > (0, 10, 0),
+            'next-release QA requires a new immutable version after v0.10.0; do not reuse the published URL/checksum')
+    install = re.search(r'^  def install\n(.*?)^  end$', candidate.read_text(), re.M | re.S).group(1)
+    require('bin/tmux-whisper' not in install and 'libexec/"tmux-whisper"' not in install,
+            'next-release formula still ships the old command')
+    prior = formula_fields(previous)
+    require(prior['version'] == '0.10.0' and prior['sha256'] == PREVIOUS_ARCHIVE_SHA,
+            'preserved previous-release source identity changed')
+    return candidate, legacy, previous, final
 
 
 def verify_tag(tag, expected, env):
@@ -113,7 +127,7 @@ def verify_tag(tag, expected, env):
     require(actual == expected, 'source tag no longer resolves to the reviewed immutable commit: ' + tag)
 
 
-def archive(url, expected, target, required, version_marker):
+def archive(url, expected, target, required, version_marker, forbidden=()):
     # The fixed GitHub HTTPS endpoint may redirect only to its codeload host.
     with urllib.request.urlopen(url, timeout=60) as response:
         require(urllib.parse.urlparse(response.url).hostname in ('github.com', 'codeload.github.com'), 'unexpected archive redirect')
@@ -134,6 +148,7 @@ def archive(url, expected, target, required, version_marker):
             if len(path.parts) > 1:
                 payload[str(PurePosixPath(*path.parts[1:]))] = member
         require(len(roots) == 1 and all(name in payload for name in required), 'archive root or required payload differs')
+        require(all(name not in payload for name in forbidden), 'next source archive still contains removed compatibility payload')
         source = archive_file.extractfile(payload[version_marker[0]]).read()
         require(version_marker[1].encode() in source, 'archive CLI version is not the expected unchanged tag')
     return {'url': url, 'sha256': expected, 'root': next(iter(roots)), 'files': len(payload)}
@@ -151,13 +166,13 @@ def product_roots(home):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--scenario', choices=('fresh', 'upgrade'), required=True)
+    parser.add_argument('--scenario', choices=('fresh', 'upgrade-v0.9', 'upgrade-v0.10'), required=True)
     parser.add_argument('--candidate', required=True)
     parser.add_argument('--canonical-commit', required=True)
     parser.add_argument('--legacy-sha256', required=True)
     parser.add_argument('--check-only', action='store_true', help='static validation only; no brew, network, profile or tap mutation')
     args = parser.parse_args()
-    candidate, legacy, final = validate_inputs(args)
+    candidate, legacy, previous, final = validate_inputs(args)
     if args.check_only:
         print(json.dumps({'state':'static-inputs-valid', 'version':final['version'], 'scenario':args.scenario}))
         return
@@ -172,34 +187,44 @@ def main():
     qa_home = private_dir(qa_root/'home')
     # Child HOME means an actual synthetic home, never repurposes the invoking
     # process's HOME variable or inspects user profile contents.
-    env = {k:v for k,v in os.environ.items() if not k.startswith(('KHULUMA_', 'DICTATE_', 'TMUX_WHISPER_', 'XDG_'))
+    env = {k:v for k,v in os.environ.items() if not k.startswith(('KHULUMA_', 'DICTATE_', 'TMUX_WHISPER_', 'LOWKEY_', 'XDG_'))
            and k not in ('SOUNDS_DIR', 'HOMEBREW_XDG_CONFIG_HOME')}
     env.update(HOME=str(qa_home), XDG_CONFIG_HOME=str(private_dir(qa_home/'.config')),
                TMPDIR=str(private_dir(qa_root/'tmp')), HOMEBREW_CACHE=str(private_dir(qa_root/'cache')),
                HOMEBREW_LOGS=str(private_dir(qa_root/'logs')), HOMEBREW_NO_AUTO_UPDATE='1', HOMEBREW_NO_INSTALL_CLEANUP='1',
                HOMEBREW_NO_CLEANUP_FORMULAE='tmux-whisper,khuluma,ffmpeg,python@3.15', HOMEBREW_NO_ANALYTICS='1',
-               HOMEBREW_NO_ENV_HINTS='1', HOMEBREW_NO_ASK='1')
-    env.update(DICTATE_TMPDIR=str(qa_root/'tmp'), KHULUMA_TMPDIR=str(qa_root/'tmp'),
-               DICTATE_PROCESSING_DIR=str(qa_root/'processing-old'), KHULUMA_PROCESSING_DIR=str(qa_root/'processing-new'))
+               HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK='1', HOMEBREW_NO_ENV_HINTS='1', HOMEBREW_NO_ASK='1')
+    env.update(KHULUMA_TMPDIR=str(qa_root/'tmp'), KHULUMA_PROCESSING_DIR=str(qa_root/'processing-new'))
+    legacy_env = dict(env, DICTATE_TMPDIR=str(qa_root/'tmp'), DICTATE_PROCESSING_DIR=str(qa_root/'processing-old'))
     original_home_roots = product_roots(Path(os.environ['HOME']))
     require(all(not p.exists() and not p.is_symlink() for p in original_home_roots), 'runner already has a product profile; refuse instead of touching it')
     original_home_snapshot = snapshot(original_home_roots)
     prefix = Path(command(['brew','--prefix'], env).strip())
     cellar = Path(command(['brew','--cellar'], env).strip())
-    require(not (cellar/'tmux-whisper').exists() and not (cellar/'khuluma').exists(), 'runner already owns a product keg')
+    require(all(not p.exists() and not p.is_symlink() for p in (cellar/'tmux-whisper', cellar/'khuluma')),
+            'runner already owns a product rack or alias')
     require(TAP not in command(['brew','tap'], env).splitlines(), 'runner already has the tap')
     brew_version = command(['brew','--version'], env).splitlines()[0]
-    verify_tag('v0.9.0', LEGACY_COMMIT, env)
     verify_tag('v'+final['version'], args.canonical_commit, env)
-    legacy_archive = archive(LEGACY_URL, args.legacy_sha256, qa_root/'legacy.tar.gz',
-                             ['bin/tmux-whisper','bin/dictate-lib.sh','tmux-whisperd/Package.resolved'],
-                             ('bin/tmux-whisper','TMUX_WHISPER_CLI_VERSION="0.9.0"'))
+    legacy_archive = previous_archive = None
+    if args.scenario == 'upgrade-v0.9':
+        verify_tag('v0.9.0', LEGACY_COMMIT, env)
+        legacy_archive = archive(LEGACY_URL, args.legacy_sha256, qa_root/'legacy.tar.gz',
+                                 ['bin/tmux-whisper','bin/dictate-lib.sh','tmux-whisperd/Package.resolved'],
+                                 ('bin/tmux-whisper','TMUX_WHISPER_CLI_VERSION="0.9.0"'))
+    if args.scenario == 'upgrade-v0.10':
+        verify_tag('v0.10.0', PREVIOUS_COMMIT, env)
+        prior = formula_fields(previous)
+        previous_archive = archive(prior['url'], prior['sha256'], qa_root/'previous.tar.gz',
+            ['bin/khuluma','bin/tmux-whisper','bin/khuluma-lib/doctor_compat.py','native/Package.resolved'],
+            ('bin/khuluma','KHULUMA_CLI_VERSION="0.10.0"'))
     canonical_archive = archive(final['url'], final['sha256'], qa_root/'canonical.tar.gz',
-        ['bin/khuluma','bin/tmux-whisper','bin/khuluma-lib.sh','bin/khuluma-lib/api-version',
+        ['bin/khuluma','bin/khuluma-lib.sh','bin/khuluma-lib/api-version',
          'bin/khuluma-lib/identity.sh','bin/khuluma-lib/migration.sh','bin/khuluma-lib/recovery.py',
          'native/Package.resolved','native/Sources/khulumad/CLI.swift',
          'native/Sources/KhulumaDaemonKit/ASREngine.swift','integrations/finder/khuluma-transcribe.sh',
-         'tools/khuluma_identity_migration.py'], ('bin/khuluma','KHULUMA_CLI_VERSION="'+final['version']+'"'))
+         'tools/khuluma_identity_migration.py'], ('bin/khuluma','KHULUMA_CLI_VERSION="'+final['version']+'"'),
+        forbidden=('bin/tmux-whisper','bin/khuluma-lib/doctor_compat.py'))
     # Dependencies must be bottles; this QA never compiles ASR/app products.
     command(['brew','install','--force-bottle','--keep-tmp','ffmpeg','python@3.15'], env)
     fixture_tap = private_dir(qa_root/'tap-origin')
@@ -210,8 +235,11 @@ def main():
     overridden, count_sha = re.subn(r'^  sha256 "[^"]+"$', '  sha256 "'+args.legacy_sha256+'"', overridden, count=1, flags=re.M)
     require(count_url == count_sha == 1, 'legacy transport-only fixture override failed')
     put(qa_root/'legacy-transport-override.rb', overridden)
-    if args.scenario == 'upgrade':
+    if args.scenario == 'upgrade-v0.9':
         put(fixture_tap/'Formula/tmux-whisper.rb', overridden)
+    elif args.scenario == 'upgrade-v0.10':
+        shutil.copy2(previous, fixture_tap/'Formula/khuluma.rb')
+        shutil.copy2(HERE.parent/'formula_renames.json', fixture_tap/'formula_renames.json')
     else:
         shutil.copy2(candidate, fixture_tap/'Formula/khuluma.rb')
         shutil.copy2(HERE.parent/'formula_renames.json', fixture_tap/'formula_renames.json')
@@ -221,15 +249,20 @@ def main():
     require(installed_tap.is_relative_to(Path(command(['brew','--repository'], env).strip())/'Library/Taps'), 'unexpected tap checkout path')
     legacy_profile = qa_home/'.config/dictate'
     old_keg_backup = None
-    if args.scenario == 'upgrade':
-        command(['brew','install','--formula','--keep-tmp',TAP+'/tmux-whisper'], env)
-        old_keg = Path(command(['brew','--prefix',TAP+'/tmux-whisper'], env).strip()).resolve()
-        require(old_keg.name == '0.9.0', 'initial installed package is not genuine v0.9.0')
+    old_version = '0.9.0' if args.scenario == 'upgrade-v0.9' else '0.10.0'
+    if args.scenario != 'fresh':
+        old_name = 'tmux-whisper' if args.scenario == 'upgrade-v0.9' else 'khuluma'
+        command(['brew','install','--formula','--keep-tmp',TAP+'/'+old_name], env)
+        old_keg = Path(command(['brew','--prefix',TAP+'/'+old_name], env).strip()).resolve()
+        require(old_keg.name == old_version, 'initial installed package is not the genuine previous release')
         require(json.loads((old_keg/'INSTALL_RECEIPT.json').read_text())['source']['tap'] == TAP, 'legacy keg receipt belongs to a different tap')
-        require('0.9.0' in command([prefix/'bin/tmux-whisper','--version'], env), 'old executable does not report v0.9.0')
+        old_probe_env = legacy_env if args.scenario == 'upgrade-v0.9' else env
+        require(old_version in command([prefix/'bin'/old_name,'--version'], old_probe_env), 'old executable version differs')
+        if args.scenario == 'upgrade-v0.10':
+            require((prefix/'bin/tmux-whisper').is_symlink(), 'published v0.10 shim was not genuinely installed')
         if legacy_profile.exists():
             legacy_profile.rename(qa_root/'retained-old-probe-profile')
-        old_keg_backup = qa_root/'retained-v0.9.0-keg'
+        old_keg_backup = qa_root/('retained-v'+old_version+'-keg')
         shutil.copytree(old_keg, old_keg_backup, symlinks=True)
     else:
         empty_home = snapshot(product_roots(qa_home))
@@ -239,52 +272,82 @@ def main():
         command([prefix/'bin/khuluma','--help'], env)
         command([prefix/'bin/khuluma','config','defaults'], env)
         require(snapshot(product_roots(qa_home)) == empty_home, 'fresh installation or pure probes created a user profile/data tree')
-    # Deliberately synthetic old profile; installation/upgrade and read-only
-    # canonical probes must preserve its bytes, mode and mtime exactly.
-    put(legacy_profile/'config.toml', '[meta]\nconfig_version=1\n[swift_parakeet]\nmodel_path=""\nsocket_path=""\n')
-    put(legacy_profile/'vocab', 'synthetic → retained\n')
-    put(legacy_profile/'usage.json', json.dumps({'schema_version':1,'delivered_dictations':{'count':9,'by_flow':{'inline':9,'tmux':0}},
+    # v0.10 users already have canonical data. The older upgrade still proves
+    # an unmigrated profile is retained/refused, never silently forked.
+    user_profile = qa_home/'.config/khuluma' if args.scenario == 'upgrade-v0.10' else legacy_profile
+    profile_config = ((old_keg/'share/khuluma/config/config.toml').read_bytes() if args.scenario == 'upgrade-v0.10'
+                      else '[meta]\nconfig_version=1\n[swift_parakeet]\nmodel_path=""\nsocket_path=""\n')
+    put(user_profile/'config.toml', profile_config)
+    put(user_profile/'vocab', 'synthetic → retained\n')
+    put(user_profile/'usage.json', json.dumps({'schema_version':1,'delivered_dictations':{'count':9,'by_flow':{'inline':9,'tmux':0}},
         'processed_words':72,'recording_duration_ms':9000,'full_elapsed_duration_ms':11000}))
+    if args.scenario == 'upgrade-v0.10':
+        # A settled v0.10 profile already has its last-good config snapshot.
+        # Keep initial publication outside the protected upgrade baseline.
+        put(user_profile/'.config.toml.last-good', profile_config)
     baseline = snapshot(product_roots(qa_home))
-    if args.scenario == 'upgrade':
-        require(not (cellar/'khuluma').exists(), 'canonical rack must be absent before genuine migration; conflict-merging is not allowed')
-        (installed_tap/'Formula/tmux-whisper.rb').rename(qa_root/'retained-old-tap-formula.rb')
+    if args.scenario == 'upgrade-v0.10':
+        old_config = json.loads(command([prefix/'bin/khuluma','app-config','--json'], env))
+        require(old_config['app_contract'] == 3 and old_config['cleanup']['config_dir'] == str(user_profile)
+                and old_config['config'].get('error') in (None, ''), 'genuine v0.10 canonical profile is not usable')
+        require(snapshot(product_roots(qa_home)) == baseline, 'v0.10 pure probe changed canonical user data')
+    if args.scenario != 'fresh':
+        if args.scenario == 'upgrade-v0.9':
+            require(not (cellar/'khuluma').exists() and not (cellar/'khuluma').is_symlink(),
+                    'canonical rack must be absent before genuine migration; conflict-merging is not allowed')
+        old_formula_name = 'tmux-whisper.rb' if args.scenario == 'upgrade-v0.9' else 'khuluma.rb'
+        (installed_tap/'Formula'/old_formula_name).rename(qa_root/'retained-old-tap-formula.rb')
         shutil.copy2(candidate, installed_tap/'Formula/khuluma.rb')
-        shutil.copy2(HERE.parent/'formula_renames.json', installed_tap/'formula_renames.json')
-        git_commit(installed_tap, 'khuluma: renamed from tmux-whisper (QA)', env)
+        if args.scenario == 'upgrade-v0.9':
+            shutil.copy2(HERE.parent/'formula_renames.json', installed_tap/'formula_renames.json')
+        git_commit(installed_tap, 'khuluma: canonical-only next release (QA)', env)
         require(not command(['git','-C',installed_tap,'status','--porcelain'], env).strip(), 'fixture tap transition is not fully committed')
         # Trust only our verified canonical fixture formula. Homebrew trust
         # intentionally does not follow the old formula name during a rename.
         command(['brew','trust','--formula',TAP+'/khuluma'], env)
-        command(['brew','migrate','--dry-run',TAP+'/tmux-whisper'], env)
-        command(['brew','migrate',TAP+'/tmux-whisper'], env)
-        require((cellar/'tmux-whisper').is_symlink() and (cellar/'tmux-whisper').resolve() == (cellar/'khuluma').resolve(), 'old rack was not migrated to canonical ownership')
-        require((cellar/'khuluma/0.9.0').is_dir(), 'migrate did not retain the genuine old installed payload')
-        require(json.loads((cellar/'khuluma/0.9.0/INSTALL_RECEIPT.json').read_text())['source']['tap'] == TAP, 'migrated old receipt lost same-tap identity')
-        require('0.9.0' in command(['brew','list','--versions',TAP+'/khuluma'], env), 'migration alone lost old installed version')
+        if args.scenario == 'upgrade-v0.9':
+            command(['brew','migrate','--dry-run',TAP+'/tmux-whisper'], env)
+            command(['brew','migrate',TAP+'/tmux-whisper'], env)
+            require((cellar/'tmux-whisper').is_symlink() and (cellar/'tmux-whisper').resolve() == (cellar/'khuluma').resolve(), 'old rack was not migrated to canonical ownership')
+            require((cellar/'khuluma/0.9.0').is_dir(), 'migrate did not retain the genuine old installed payload')
+            require(json.loads((cellar/'khuluma/0.9.0/INSTALL_RECEIPT.json').read_text())['source']['tap'] == TAP, 'migrated old receipt lost same-tap identity')
+            require('0.9.0' in command(['brew','list','--versions',TAP+'/khuluma'], env), 'migration alone lost old installed version')
         command(['brew','upgrade','--formula','--keep-tmp',TAP+'/khuluma'], env)
     require(snapshot(product_roots(qa_home)) == baseline, 'Brew installation/upgrade changed a synthetic user profile')
     new_keg = (prefix/'opt/khuluma').resolve()
     require(new_keg.name == final['version'] and new_keg.parent == cellar/'khuluma', 'canonical opt does not select final version')
     require(json.loads((new_keg/'INSTALL_RECEIPT.json').read_text())['source']['tap'] == TAP, 'canonical keg receipt belongs to a different tap')
-    for name in ('khuluma','tmux-whisper','khuluma-lib.sh'):
+    for name in ('khuluma','khuluma-lib.sh'):
         require((prefix/'bin'/name).is_symlink() and (prefix/'bin'/name).resolve().is_relative_to(new_keg), 'public command/library has a different owner: '+name)
-    if args.scenario == 'upgrade':
-        require((prefix/'opt/tmux-whisper').resolve() == new_keg, 'old opt route does not resolve to the canonical current keg')
-        require((cellar/'khuluma/0.9.0').is_dir() and old_keg_backup.is_dir(), 'automatic cleanup removed recovery payload')
-        require(sha(cellar/'khuluma/0.9.0/libexec/tmux-whisper') == sha(old_keg_backup/'libexec/tmux-whisper'), 'migration changed retained old CLI code')
+    require(all(not p.exists() and not p.is_symlink() for p in (
+        prefix/'bin/tmux-whisper', new_keg/'bin/tmux-whisper', new_keg/'libexec/tmux-whisper',
+        new_keg/'libexec/khuluma-lib/doctor_compat.py')), 'removed compatibility payload remains CURRENT')
+    if args.scenario != 'fresh':
+        if args.scenario == 'upgrade-v0.9':
+            require((prefix/'opt/tmux-whisper').resolve() == new_keg, 'old opt route does not resolve to the canonical current keg')
+        require((cellar/'khuluma'/old_version).is_dir() and old_keg_backup.is_dir(), 'automatic cleanup removed recovery payload')
+        old_command = 'tmux-whisper' if args.scenario == 'upgrade-v0.9' else 'khuluma'
+        require(sha(cellar/'khuluma'/old_version/'libexec'/old_command) == sha(old_keg_backup/'libexec'/old_command), 'upgrade changed retained old CLI code')
+        if args.scenario == 'upgrade-v0.10':
+            require(sha(cellar/'khuluma/0.10.0/libexec/tmux-whisper') == sha(old_keg_backup/'libexec/tmux-whisper'), 'retained historical shim bytes changed')
         require(not (prefix/'bin/dictate-lib.sh').exists() and not (prefix/'bin/dictate-lib.sh').is_symlink(), 'old library remains an active public link')
     version = json.loads(command([prefix/'bin/khuluma','version','--json'], env))
-    compatibility = json.loads(command([prefix/'bin/tmux-whisper','version','--json'], env))
-    require(version == compatibility and version['schema_version'] == 1 and version['cli_version'] == final['version'], 'canonical and shim wrappers/schema differ')
+    require(version['schema_version'] == 1 and version['cli_version'] == final['version'], 'canonical version/schema differs')
     require(version['identity']['product'] == 'khuluma' and version['identity']['identity_version'] == 1
             and version['identity']['canonical_binary'] == str(new_keg/'libexec/khuluma')
             and version['running_binary']['path'] == version['identity']['canonical_binary']
-            and version['identity']['migration_required'] is True, 'wrapper identity or legacy admission refusal differs')
-    require(snapshot(product_roots(qa_home)) == baseline, 'pure version probes changed the legacy profile')
-    result = subprocess.run([str(prefix/'bin/khuluma'),'app-config','--json'], env=env, capture_output=True, text=True)
-    require(result.returncode == 2 and not (qa_home/'.config/khuluma').exists(), 'new CLI did not refuse un-migrated default profile')
-    require(snapshot(product_roots(qa_home)) == baseline, 'refusal changed existing legacy data')
+            and version['identity']['migration_required'] is (args.scenario != 'upgrade-v0.10'),
+            'wrapper identity or profile admission state differs')
+    require(snapshot(product_roots(qa_home)) == baseline, 'pure version probe changed user data')
+    if args.scenario == 'upgrade-v0.10':
+        upgraded_config = json.loads(command([prefix/'bin/khuluma','app-config','--json'], env))
+        require(upgraded_config['app_contract'] == 3 and upgraded_config['cleanup']['config_dir'] == str(user_profile)
+                and upgraded_config['transcription']['socket_path'] == str(user_profile/'.cache/khulumad.sock')
+                and upgraded_config['config'].get('error') in (None, ''), 'next release cannot use preserved canonical profile')
+    else:
+        result = subprocess.run([str(prefix/'bin/khuluma'),'app-config','--json'], env=env, capture_output=True, text=True)
+        require(result.returncode == 2 and not (qa_home/'.config/khuluma').exists(), 'new CLI did not refuse un-migrated default profile')
+    require(snapshot(product_roots(qa_home)) == baseline, 'read-only app-config probe changed user data')
     share = new_keg/'share/khuluma'
     for name in ('native/Package.swift','native/Package.resolved','native/Sources/khulumad/CLI.swift',
                  'native/Sources/KhulumaDaemonKit/ASREngine.swift','tools/khuluma_identity_migration.py',
@@ -305,7 +368,6 @@ def main():
     command([prefix/'bin/khuluma','--help'], contract_env)
     command([prefix/'bin/khuluma','config','defaults'], contract_env)
     doctor = json.loads(command([prefix/'bin/khuluma','doctor','--json'], contract_env))
-    old_doctor = json.loads(command([prefix/'bin/tmux-whisper','doctor','--json'], contract_env))
     require(doctor['schema_version'] == 2, 'doctor schema differs')
     reported_source = Path(doctor['install_sanity']['daemon_source']['path'])
     expected_source = share/'native'
@@ -313,8 +375,7 @@ def main():
     require(reported_source.resolve(strict=True) == expected_source.resolve(strict=True)
             and (reported_source/'Package.swift').samefile(expected_source/'Package.swift'),
             'doctor source discovery does not identify this canonical keg package')
-    require('cli_binary' in doctor['install_sanity'] and 'tmux_whisper_binary' in old_doctor['install_sanity']
-            and 'schema_version' not in old_doctor, 'legacy doctor adapter differs')
+    require('cli_binary' in doctor['install_sanity'] and 'tmux_whisper_binary' not in doctor['install_sanity'], 'canonical doctor identity keys differ')
     require(snapshot([profile, qa_root/'contract-data']) == pure_before, 'read-only probes changed contract profile/data')
     command(['brew','audit','--strict',TAP+'/khuluma'], env)
     command(['brew','test','--keep-tmp',TAP+'/khuluma'], env)
@@ -328,6 +389,8 @@ def main():
     require(snapshot(product_roots(qa_home)) == baseline and snapshot(original_home_roots) == original_home_snapshot, 'a protected user profile changed')
     report = {'state':'passed','scenario':args.scenario,'brew':brew_version,'machine':platform.machine(),
               'canonical_archive':canonical_archive,'legacy_archive':legacy_archive,'canonical_commit':args.canonical_commit,
+              'previous_archive':previous_archive,'previous_commit':PREVIOUS_COMMIT if previous_archive else None,
+              'profile_scenario':'canonical v0.10 data preserved and usable' if args.scenario == 'upgrade-v0.10' else 'unmigrated legacy data preserved and refused',
               'legacy_commit':LEGACY_COMMIT,'canonical_keg':str(new_keg),'retained_fixture_root':str(qa_root),
               'old_keg_snapshot':str(old_keg_backup) if old_keg_backup else None,
               'ownership_entries':len(ownership),'uninstall':'not run; ownership and unchanged-profile checks only',

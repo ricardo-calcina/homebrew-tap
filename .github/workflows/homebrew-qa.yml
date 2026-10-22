@@ -36,7 +36,7 @@ jobs:
       fail-fast: false
       max-parallel: 2
       matrix:
-        scenario: [fresh, upgrade]
+        scenario: [fresh, upgrade-v0.9, upgrade-v0.10]
     env:
       QA_PUBLIC_STANDARD_RUNNER: '1'
       QA_CANDIDATE: ${{ inputs.canonical_formula }}
@@ -52,7 +52,7 @@ jobs:
           python3 -B release/homebrew-qa.py --check-only --scenario '${{ matrix.scenario }}' \
             --candidate "$QA_CANDIDATE" --canonical-commit "$QA_CANONICAL_COMMIT" \
             --legacy-sha256 "$QA_LEGACY_SHA256"
-      - name: Test package ownership and genuine rename upgrade
+      - name: Test canonical-only package ownership and release upgrades
         run: |
           python3 -B release/homebrew-qa.py --scenario '${{ matrix.scenario }}' \
             --candidate "$QA_CANDIDATE" --canonical-commit "$QA_CANONICAL_COMMIT" \

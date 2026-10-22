@@ -2,15 +2,21 @@
 
 ## Now
 
-The canonical v0.10.0 CLI formula and same-tap rename map are published. Source tag `v0.10.0` is pinned to `f8af27e`; measured archive SHA is in `Formula/khuluma.rb`. Both published fresh-install and genuine v0.9.0 migrate/upgrade jobs passed strict audit, formula tests, singular package ownership and unchanged-profile checks on Homebrew 7.0.9/arm64. This Mac also migrated and upgraded with old code/recovery retained; the daily app is a separate installation.
+Preparing canonical-only v0.11.0 in an isolated worktree. The formula is bound to the verified immutable source tag at `31b86a65`; actual archive SHA is in `Formula/khuluma.rb`. The archive's 192 files matched Git and pinned bootstrap passed privately. Hosted fresh/v0.9/v0.10 package QA and publication are next. The daily app/local CLI refresh passed separately; no daily Brew changes yet.
+
+The published v0.10 fresh/v0.9 QA outcomes remain in Done and the QA record. Keep prior releases and the exact v0.9/v0.10 fixtures intact.
 
 The source [LOG](https://github.com/ricardo-nth/khuluma/blob/main/LOG.md) owns current product work; its [archived identity record](https://github.com/ricardo-nth/khuluma/blob/main/docs/plans/archive/KHULUMA_IDENTITY_RENAME.md) preserves migration evidence. Keep the neutral tap and one canonical formula/map. Package installation does not migrate user data or install the app.
 
 ## Next
 
+- [ ] P1 · Bind the verified v0.11 source/archive, pass all three disposable scenarios and publish matching canonical-only package · added 2026-10-23
+
 - [x] P1 · Verify the final source archive, activate canonical formula/rename map, test fresh install and old-formula upgrade in isolation, then publish the tap · added 2026-10-22
 
 ## Done
+
+- 2026-10-23 · Prepared canonical-only formula and three-scenario QA against measured v0.11 source; prior fixtures retained · release/HOMEBREW_QA.md
 
 - 2026-10-22 · Published canonical formula/map; fresh and genuine v0.9 upgrade passed strict audit, tests and ownership/data checks · #5; d0724ae; Actions39843684723
 - 2026-10-22 · This Mac migrated/upgraded to v0.10.0 with cleanup disabled, old keg retained and daily runtime preserved · Formula/khuluma.rb
