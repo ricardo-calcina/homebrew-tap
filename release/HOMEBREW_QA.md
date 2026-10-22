@@ -33,7 +33,8 @@ Current Homebrew requires canonical formula trust when an old name migrates to
 a new formula; old-name trust does not transfer. The upgrade fixture explicitly
 runs `brew trust --formula ricardo-nth/tap/khuluma` only after installing the
 reviewed candidate into its private fixture tap. Its trust store belongs to the
-synthetic HOME; no daily Mac trust is changed. Doctor source routes may include
+synthetic HOME and explicitly confined XDG_CONFIG_HOME; inherited Homebrew config
+overrides are discarded. No daily Mac trust is changed. Doctor source routes may include
 `libexec/../share`; QA requires the resolved directory and existing Package.swift
 to identify the same canonical keg, rather than comparing lexical spellings.
 [Homebrew tap trust](https://docs.brew.sh/Tap-Trust).
