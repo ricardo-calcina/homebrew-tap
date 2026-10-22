@@ -16,7 +16,7 @@ image details can change. [GitHub runner reference](https://docs.github.com/en/a
 Initial GitHub repository metadata was checked read-only on 2026-10-22:
 `ricardo-nth/homebrew-tap` is public, its default branch is main, and it had no
 existing `.github` workflow to extend. This is one manual-only workflow with two independent disposable
-runner jobs, `fresh` and `upgrade`, run sequentially. It uses checkout with
+runner jobs, `fresh` and `upgrade`, run in parallel on separate standard public macOS VMs. It uses checkout with
 `clean:false` and no persisted credentials, contents-read permission, and a
 35-minute job limit. It dispatches only when explicitly requested with final inputs.
 
