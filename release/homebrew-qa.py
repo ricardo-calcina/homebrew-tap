@@ -73,7 +73,8 @@ def snapshot(paths):
 def command(args, env, expect=0):
     print('+ ' + ' '.join(map(str, args)), flush=True)
     result = subprocess.run(list(map(str, args)), env=env, capture_output=True, text=True, timeout=1200)
-    require(result.returncode == expect, 'command returned ' + str(result.returncode) + ': ' + result.stderr[-3000:])
+    require(result.returncode == expect, 'command returned ' + str(result.returncode)
+            + '\nstdout:\n' + result.stdout[-6000:] + '\nstderr:\n' + result.stderr[-3000:])
     return result.stdout
 
 
@@ -171,8 +172,10 @@ def main():
     qa_home = private_dir(qa_root/'home')
     # Child HOME means an actual synthetic home, never repurposes the invoking
     # process's HOME variable or inspects user profile contents.
-    env = {k:v for k,v in os.environ.items() if not k.startswith(('KHULUMA_', 'DICTATE_', 'TMUX_WHISPER_', 'XDG_')) and k != 'SOUNDS_DIR'}
-    env.update(HOME=str(qa_home), TMPDIR=str(private_dir(qa_root/'tmp')), HOMEBREW_CACHE=str(private_dir(qa_root/'cache')),
+    env = {k:v for k,v in os.environ.items() if not k.startswith(('KHULUMA_', 'DICTATE_', 'TMUX_WHISPER_', 'XDG_'))
+           and k not in ('SOUNDS_DIR', 'HOMEBREW_XDG_CONFIG_HOME')}
+    env.update(HOME=str(qa_home), XDG_CONFIG_HOME=str(private_dir(qa_home/'.config')),
+               TMPDIR=str(private_dir(qa_root/'tmp')), HOMEBREW_CACHE=str(private_dir(qa_root/'cache')),
                HOMEBREW_LOGS=str(private_dir(qa_root/'logs')), HOMEBREW_NO_AUTO_UPDATE='1', HOMEBREW_NO_INSTALL_CLEANUP='1',
                HOMEBREW_NO_CLEANUP_FORMULAE='tmux-whisper,khuluma,ffmpeg,python@3.15', HOMEBREW_NO_ANALYTICS='1',
                HOMEBREW_NO_ENV_HINTS='1', HOMEBREW_NO_ASK='1')
