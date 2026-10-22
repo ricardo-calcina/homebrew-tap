@@ -102,7 +102,7 @@ def validate_inputs(args):
     require(sha(legacy) == FIXTURE_SHA, 'preserved v0.9.0 formula fixture changed')
     require(re.fullmatch('[0-9a-f]{64}', args.legacy_sha256), 'actual renamed v0.9 archive checksum is required')
     require(re.fullmatch('[0-9a-f]{40}', args.canonical_commit), 'actual final tag commit is required')
-    require(json.loads((HERE / 'formula_renames.json').read_text()) == {'tmux-whisper': 'khuluma'}, 'unexpected rename map')
+    require(json.loads((HERE.parent / 'formula_renames.json').read_text()) == {'tmux-whisper': 'khuluma'}, 'unexpected rename map')
     return candidate, legacy, formula_fields(candidate)
 
 
@@ -214,7 +214,7 @@ def main():
         put(fixture_tap/'Formula/tmux-whisper.rb', overridden)
     else:
         shutil.copy2(candidate, fixture_tap/'Formula/khuluma.rb')
-        shutil.copy2(HERE/'formula_renames.json', fixture_tap/'formula_renames.json')
+        shutil.copy2(HERE.parent/'formula_renames.json', fixture_tap/'formula_renames.json')
     git_commit(fixture_tap, 'QA initial tap state', env)
     command(['brew','tap',TAP,fixture_tap.as_uri()], env)
     installed_tap = Path(command(['brew','--repo',TAP], env).strip())
@@ -250,7 +250,7 @@ def main():
         require(not (cellar/'khuluma').exists(), 'canonical rack must be absent before genuine migration; conflict-merging is not allowed')
         (installed_tap/'Formula/tmux-whisper.rb').rename(qa_root/'retained-old-tap-formula.rb')
         shutil.copy2(candidate, installed_tap/'Formula/khuluma.rb')
-        shutil.copy2(HERE/'formula_renames.json', installed_tap/'formula_renames.json')
+        shutil.copy2(HERE.parent/'formula_renames.json', installed_tap/'formula_renames.json')
         git_commit(installed_tap, 'khuluma: renamed from tmux-whisper (QA)', env)
         require(not command(['git','-C',installed_tap,'status','--porcelain'], env).strip(), 'fixture tap transition is not fully committed')
         # Trust only our verified canonical fixture formula. Homebrew trust
