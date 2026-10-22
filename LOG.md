@@ -1,12 +1,18 @@
 # Tap log
 
 ## Now
-Maintain the tagged CLI formula separately from Khuluma source and the installed daily app. The checked-in formula references v0.9.0; no online release or installed-version check was performed.
+
+Prepare the canonical Khuluma formula in the isolated rename worktree. The active formula remains the published v0.9.0 CLI; `release/` holds the v0.10.0 template and formula rename map until the final source tag/archive and actual checksum exist. The source [rename plan](../khuluma/docs/KHULUMA_RENAME_PLAN.md) owns coordinated cutover and release gates; the final sibling checkout is `khuluma`.
 
 ## Next
-The source repository's `../tmux-whisper/LOG.md` owns the pending updater path correction. No separate tap task is open from this documentation pass.
+
+- [ ] P1 · Verify the final source archive, activate canonical formula/rename map, test fresh install and old-formula upgrade in isolation, then publish the tap · added 2026-10-22
 
 ## Done
+
+- 2026-10-22 · Added inactive disposable macOS fresh/old-formula upgrade QA; static checks passed, actual release inputs pending · 0bf77b8; release/HOMEBREW_QA.md
+
+- 2026-10-22 · Prepared canonical formula and rename map outside active Formula; Ruby syntax and payload wiring checked; publication pending · release/
 
 - 2026-10-22 · Outer source collection renamed Khuluma; tap folder, formula and Git identity retained · README.md
 - 2026-10-22 · Moved with the complete collection under VPS/Apps/tmux-whspr; source sibling and formula retained · ../README.md
