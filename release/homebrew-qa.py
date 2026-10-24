@@ -21,10 +21,10 @@ import tempfile
 import urllib.parse
 import urllib.request
 
-TAP = 'ricardo-nth/tap'
-SOURCE_REPO = 'https://github.com/ricardo-nth/khuluma.git'
+TAP = 'ricardo-calcina/tap'
+SOURCE_REPO = 'https://github.com/ricardo-calcina/khuluma.git'
 LEGACY_COMMIT = 'd0152e45f84551b71a679cfc32da0b9821d8f4f9'
-LEGACY_URL = 'https://github.com/ricardo-nth/khuluma/archive/refs/tags/v0.9.0.tar.gz'
+LEGACY_URL = 'https://github.com/ricardo-calcina/khuluma/archive/refs/tags/v0.9.0.tar.gz'
 FIXTURE_SHA = '3b609395f1b31ec8c029116aa8708e3f5f52d463311964aa2a7cf3406662ba60'
 PREVIOUS_COMMIT = 'f8af27e95c6763b30b52da107da3120c4d96f190'
 PREVIOUS_FIXTURE_SHA = 'a807b05a814d67e666f3a65e870dcf7b344ea619f5c2cbbc7b7569ed9aea57e5'
@@ -81,12 +81,12 @@ def command(args, env, expect=0):
     return result.stdout
 
 
-def formula_fields(path):
+def formula_fields(path, *, owner="ricardo-calcina"):
     text = path.read_text()
     url = re.findall(r'^  url "([^"]+)"$', text, re.M)
     checksum = re.findall(r'^  sha256 "([0-9a-f]{64})"$', text, re.M)
     require(len(url) == len(checksum) == 1, 'candidate must contain one actual final-tag URL and measured SHA256')
-    match = re.fullmatch(r'https://github.com/ricardo-nth/khuluma/archive/refs/tags/v(\d+\.\d+\.\d+)\.tar\.gz', url[0])
+    match = re.fullmatch(rf'https://github.com/{re.escape(owner)}/khuluma/archive/refs/tags/v(\d+\.\d+\.\d+)\.tar\.gz', url[0])
     require(match and match.group(1) != '0.9.0', 'canonical source must be the actual final canonical tag')
     require('class Khuluma < Formula' in text and '@KHULUMA_' not in text, 'candidate is still an unresolved template')
     install = re.search(r'^  def install\n(.*?)^  end$', text, re.M | re.S)
@@ -114,7 +114,7 @@ def validate_inputs(args):
     install = re.search(r'^  def install\n(.*?)^  end$', candidate.read_text(), re.M | re.S).group(1)
     require('bin/tmux-whisper' not in install and 'libexec/"tmux-whisper"' not in install,
             'next-release formula still ships the old command')
-    prior = formula_fields(previous)
+    prior = formula_fields(previous, owner="ricardo-nth")
     require(prior['version'] == '0.10.0' and prior['sha256'] == PREVIOUS_ARCHIVE_SHA,
             'preserved previous-release source identity changed')
     return candidate, legacy, previous, final
@@ -179,7 +179,7 @@ def main():
     require(sys.platform == 'darwin' and os.environ.get('GITHUB_ACTIONS') == 'true'
             and os.environ.get('RUNNER_OS') == 'macOS' and os.environ.get('RUNNER_ENVIRONMENT') == 'github-hosted'
             and os.environ.get('QA_PUBLIC_STANDARD_RUNNER') == '1', 'only the candidate public standard GitHub-hosted macOS workflow may execute QA')
-    require(os.environ.get('GITHUB_REPOSITORY') == 'ricardo-nth/homebrew-tap', 'unexpected repository; no daily Mac or other repository run')
+    require(os.environ.get('GITHUB_REPOSITORY') == 'ricardo-calcina/homebrew-tap', 'unexpected repository; no daily Mac or other repository run')
     runner_temp = Path(os.environ['RUNNER_TEMP']).resolve()
     require(runner_temp.is_dir() and runner_temp.stat().st_uid == os.getuid(), 'runner temporary directory is not owned')
     qa_root = Path(tempfile.mkdtemp(prefix='khuluma-brew-qa-', dir=runner_temp))
@@ -214,7 +214,7 @@ def main():
                                  ('bin/tmux-whisper','TMUX_WHISPER_CLI_VERSION="0.9.0"'))
     if args.scenario == 'upgrade-v0.10':
         verify_tag('v0.10.0', PREVIOUS_COMMIT, env)
-        prior = formula_fields(previous)
+        prior = formula_fields(previous, owner="ricardo-nth")
         previous_archive = archive(prior['url'], prior['sha256'], qa_root/'previous.tar.gz',
             ['bin/khuluma','bin/tmux-whisper','bin/khuluma-lib/doctor_compat.py','native/Package.resolved'],
             ('bin/khuluma','KHULUMA_CLI_VERSION="0.10.0"'))
