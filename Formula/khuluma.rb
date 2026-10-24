@@ -1,7 +1,7 @@
 class Khuluma < Formula
   desc "Local macOS dictation back end and audio file transcription CLI"
-  homepage "https://github.com/ricardo-nth/khuluma"
-  url "https://github.com/ricardo-nth/khuluma/archive/refs/tags/v0.11.0.tar.gz"
+  homepage "https://github.com/ricardo-calcina/khuluma"
+  url "https://github.com/ricardo-calcina/khuluma/archive/refs/tags/v0.11.0.tar.gz"
   sha256 "ddac91098b8e616bf9edfa526eae6ef8fe4fa347907634570589788642b2b9ee"
   license "MIT"
 

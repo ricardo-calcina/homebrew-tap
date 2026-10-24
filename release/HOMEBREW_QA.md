@@ -2,7 +2,7 @@ The release formula is `Formula/khuluma.rb`, with root `formula_renames.json`
 mapping the former package name to it. The sole manual workflow is
 `.github/workflows/homebrew-qa.yml`; obsolete staging copies were retired after
 candidate QA passed. Actual runner outcomes are recorded separately in LOG.md.
-The earlier [transport bridge](https://github.com/ricardo-nth/homebrew-tap/pull/1) refreshed only the old v0.9.0 same-tag archive URL/checksum after the source repository rename.
+The earlier [transport bridge](https://github.com/ricardo-calcina/homebrew-tap/pull/1) refreshed only the old v0.9.0 same-tag archive URL/checksum after the source repository rename.
 
 GitHub's standard hosted runners are free for public repositories; larger
 runners remain charged even for public repositories. The candidate allocates
@@ -14,7 +14,7 @@ image details can change. [GitHub runner reference](https://docs.github.com/en/a
 [GitHub Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions).
 
 Initial GitHub repository metadata was checked read-only on 2026-10-22:
-`ricardo-nth/homebrew-tap` is public, its default branch is main, and it had no
+`ricardo-calcina/homebrew-tap` is public, its default branch is main, and it had no
 existing `.github` workflow to extend. The workflow now has three independent disposable scenarios: `fresh`, `upgrade-v0.9` and `upgrade-v0.10`, with at most two standard public macOS VMs at once. It uses checkout with
 `clean:false` and no persisted credentials, contents-read permission, and a
 35-minute job limit. It dispatches only when explicitly requested with final inputs.
@@ -30,7 +30,7 @@ deletion path. [Homebrew rename instructions](https://docs.brew.sh/Rename-A-Form
 
 Current Homebrew requires canonical formula trust when an old name migrates to
 a new formula; old-name trust does not transfer. The upgrade fixture explicitly
-runs `brew trust --formula ricardo-nth/tap/khuluma` only after installing the
+runs `brew trust --formula ricardo-calcina/tap/khuluma` only after installing the
 reviewed candidate into its private fixture tap. Its trust store belongs to the
 synthetic HOME and explicitly confined XDG_CONFIG_HOME; inherited Homebrew config
 overrides are discarded. No daily Mac trust is changed. Doctor source routes may include
@@ -46,9 +46,9 @@ The published v0.11.0 formula uses verified immutable commit
 All 192 regular archive files matched that Git commit, and the real pinned
 bootstrap passed in a private child HOME with real user roots unchanged.
 All three scenarios passed for candidate commit `21c65faa` in
-[run 39852559290](https://github.com/ricardo-nth/homebrew-tap/actions/runs/39852559290),
+[run 39852559290](https://github.com/ricardo-calcina/homebrew-tap/actions/runs/39852559290),
 then for published tap commit `449aa97160e7295e3d759cf35a91c0c3ae5a41c1` in
-[run 39853338244](https://github.com/ricardo-nth/homebrew-tap/actions/runs/39853338244).
+[run 39853338244](https://github.com/ricardo-calcina/homebrew-tap/actions/runs/39853338244).
 Both runs included strict audit, actual formula tests, one canonical owner and
 unchanged synthetic profiles. The targeted local v0.10→v0.11 upgrade also passed
 with old kegs retained and the daily app, daemon, data, model and trust unchanged.
@@ -60,10 +60,10 @@ The earlier completed v0.10.0 candidate used commit
 The renamed v0.9.0 archive SHA256 is
 `61cc4d746734cb1c61146b1b086d1f381e701cd1a8b04f242ddfb2ecb81d85f2`.
 Both candidate scenarios passed before the tracked formula/map moves in
-[run 39842673670](https://github.com/ricardo-nth/homebrew-tap/actions/runs/39842673670).
+[run 39842673670](https://github.com/ricardo-calcina/homebrew-tap/actions/runs/39842673670).
 Both published-formula scenarios then passed at tap commit
 `d0724ae9255cf1b47cd8b135dd8ded71abf635d2` with
-`canonical_formula=Formula/khuluma.rb`: [run 39843684723](https://github.com/ricardo-nth/homebrew-tap/actions/runs/39843684723),
+`canonical_formula=Formula/khuluma.rb`: [run 39843684723](https://github.com/ricardo-calcina/homebrew-tap/actions/runs/39843684723),
 Homebrew 7.0.9/arm64. Both runs included strict audit, actual formula tests,
 one canonical owner and unchanged synthetic profiles. Uninstall was not run.
 For future releases, repeat against the exact published formula paths.
